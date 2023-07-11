@@ -400,7 +400,11 @@ void CursorInputMapper::process(const RawEvent* rawEvent) {
     mCursorMotionAccumulator.process(rawEvent);
     mCursorPositionAccumulator.process(rawEvent);
     mCursorScrollAccumulator.process(rawEvent);
-
+    if (auto viewport = mDeviceContext.getAssociatedViewport(); viewport) {
+        if (viewport->displayId != mPointerController->getDisplayId()) {
+            mPointerController->setDisplayViewport(*viewport);
+        }
+    }
     if (rawEvent->type == EV_SYN && rawEvent->code == SYN_REPORT) {
         sync(rawEvent->when, rawEvent->readTime);
     }
