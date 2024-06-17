@@ -49,9 +49,10 @@ std::string_view parseEdidText(const byte_view& view) {
     std::string_view text(reinterpret_cast<const char*>(view.data()), view.size());
     text = text.substr(0, text.find('\n'));
 
-    if (!std::all_of(text.begin(), text.end(), ::isprint)) {
+    auto it = std::find_if_not(text.begin(), text.end(), ::isprint);
+    if (it != text.end()) {
         ALOGW("Invalid EDID: ASCII text is not printable.");
-        return {};
+        text = text.substr(0, static_cast<size_t>(it - text.begin()));
     }
 
     return text;
