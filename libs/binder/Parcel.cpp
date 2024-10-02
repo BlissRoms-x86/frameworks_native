@@ -713,6 +713,10 @@ restart_write:
         //printf("Writing %ld bytes, padded to %ld\n", len, padded);
         uint8_t* const data = mData+mDataPos;
 
+        if (status_t status = validateReadData(mDataPos + padded); status != OK) {
+            return nullptr; // drops status
+        }
+
         // Need to pad at end?
         if (padded != len) {
 #if BYTE_ORDER == BIG_ENDIAN
@@ -1284,6 +1288,10 @@ status_t Parcel::writeObject(const flat_binder_object& val, bool nullMetaData)
     const bool enoughObjects = mObjectsSize < mObjectsCapacity;
     if (enoughData && enoughObjects) {
 restart_write:
+        if (status_t status = validateReadData(mDataPos + sizeof(val)); status != OK) {
+            return status;
+        }
+
         *reinterpret_cast<flat_binder_object*>(mData+mDataPos) = val;
 
         // remember if it's a file descriptor
@@ -1476,6 +1484,10 @@ status_t Parcel::writeAligned(T val) {
 
     if ((mDataPos+sizeof(val)) <= mDataCapacity) {
 restart_write:
+        if (status_t status = validateReadData(mDataPos + sizeof(val)); status != OK) {
+            return status;
+        }
+
         *reinterpret_cast<T*>(mData+mDataPos) = val;
         return finishWrite(sizeof(val));
     }
