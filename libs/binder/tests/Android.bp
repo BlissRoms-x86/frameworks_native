@@ -50,7 +50,9 @@ cc_test {
     defaults: ["binder_test_defaults"],
     srcs: ["binderLibTest.cpp"],
     shared_libs: [
+        "libbase",
         "libbinder",
+        "liblog",
         "libutils",
     ],
     compile_multilib: "32",
@@ -71,7 +73,9 @@ cc_test {
 
     srcs: ["binderLibTest.cpp"],
     shared_libs: [
+        "libbase",
         "libbinder",
+        "liblog",
         "libutils",
     ],
     test_suites: ["device-tests", "vts"],
