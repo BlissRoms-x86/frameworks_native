@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <utils/Errors.h>
 #include <utils/Thread.h>
-
+#include <cutils/properties.h>
 #include "InputDevice.h"
 
 using android::base::StringPrintf;
@@ -458,6 +458,11 @@ void InputReader::updatePointerDisplayLocked() {
 
     std::optional<DisplayViewport> viewport =
             mConfig.getDisplayViewportById(mConfig.defaultPointerDisplayId);
+
+    int32_t mOverrideDisplayId = property_get_int32("sys.override.cursor_display_id", -1);
+    if (mOverrideDisplayId != -1) {
+        viewport = mConfig.getDisplayViewportById(mOverrideDisplayId);
+    }
     if (!viewport) {
         ALOGW("Can't find the designated viewport with ID %" PRId32 " to update cursor input "
               "mapper. Fall back to default display",
