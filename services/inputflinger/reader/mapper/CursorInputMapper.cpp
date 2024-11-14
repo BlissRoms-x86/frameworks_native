@@ -532,9 +532,15 @@ void CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
             displayId = mDisplayId;
             float minX, minY, maxX, maxY;
             if (mPointerController->getBounds(&minX, &minY, &maxX, &maxY)) {
-                if(xCursorPosition==minX||xCursorPosition==maxX||yCursorPosition==minY||yCursorPosition==maxY){
+                float originalY = yCursorPosition; // remember the original y position
+                if(xCursorPosition==minX){
                     displayId=getPolicy()->notifyDisplayIdChanged();
                     mDisplayId=displayId;
+                    mPointerController->setPosition(maxX, originalY);
+                } else if(xCursorPosition==maxX){
+                    displayId=getPolicy()->notifyDisplayIdChanged();
+                    mDisplayId=displayId;
+                    mPointerController->setPosition(minX, originalY);
                 }
             }
         }else{
