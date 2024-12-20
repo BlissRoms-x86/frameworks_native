@@ -459,7 +459,7 @@ void InputReader::updatePointerDisplayLocked() {
     std::optional<DisplayViewport> viewport =
             mConfig.getDisplayViewportById(mConfig.defaultPointerDisplayId);
 
-    int32_t mOverrideDisplayId = property_get_int32("sys.override.cursor_display_id", -1);
+    int32_t mOverrideDisplayId = property_get_int32("persist.override.cursor_display_id", -1);
     if (mOverrideDisplayId != -1) {
         viewport = mConfig.getDisplayViewportById(mOverrideDisplayId);
     }
