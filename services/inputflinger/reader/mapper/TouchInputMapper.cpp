@@ -25,6 +25,7 @@
 #include "CursorScrollAccumulator.h"
 #include "TouchButtonAccumulator.h"
 #include "TouchCursorInputMapperCommon.h"
+#include <cutils/properties.h>
 
 namespace android {
 
@@ -1442,6 +1443,7 @@ void TouchInputMapper::reset(nsecs_t when) {
     mHavePointerIds = false;
     mCurrentMotionAborted = false;
     mDownTime = 0;
+    mDisplayId = 0;
 
     mCurrentVirtualKey.down = false;
 
@@ -2638,7 +2640,29 @@ void TouchInputMapper::dispatchPointerGestures(nsecs_t when, nsecs_t readTime, u
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_X, x);
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_Y, y);
 
-        const int32_t displayId = mPointerController->getDisplayId();
+        int32_t displayId = ADISPLAY_ID_NONE;
+
+        char mMousePresentation[PROPERTY_VALUE_MAX] = {0};
+        property_get("persist.mouse.presentation", mMousePresentation, "0");
+        if (strcmp(mMousePresentation, "1") == 0) {
+            displayId = mDisplayId;
+            float minX, minY, maxX, maxY;
+            if (mPointerController->getBounds(&minX, &minY, &maxX, &maxY)) {
+                float originalY = y; // remember the original y position
+                if(x==minX){
+                    displayId=getPolicy()->notifyDisplayIdChanged();
+                    mDisplayId=displayId;
+                    mPointerController->setPosition(maxX, originalY);
+                } else if(x==maxX){
+                    displayId=getPolicy()->notifyDisplayIdChanged();
+                    mDisplayId=displayId;
+                    mPointerController->setPosition(minX, originalY);
+                }
+            }
+        }else{
+            displayId = mPointerController->getDisplayId();
+        }
+
         NotifyMotionArgs args(getContext()->getNextId(), when, readTime, getDeviceId(), mSource,
                               displayId, policyFlags, AMOTION_EVENT_ACTION_HOVER_MOVE, 0, flags,
                               metaState, buttonState, MotionClassification::NONE,

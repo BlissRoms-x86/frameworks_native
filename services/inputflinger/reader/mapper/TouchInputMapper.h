@@ -448,6 +448,8 @@ private:
     // requested orientation, so it will depend on whether the device is orientation aware.
     int32_t mSurfaceOrientation;
 
+    int32_t mDisplayId;
+
     // Translation and scaling factors, orientation-independent.
     float mXTranslate;
     float mXScale;
