@@ -254,28 +254,6 @@ struct SCOPED_CAPABILITY UnnecessaryLock {
 // TODO(b/141333600): Consolidate with DisplayMode::Builder::getDefaultDensity.
 constexpr float FALLBACK_DENSITY = ACONFIGURATION_DENSITY_TV;
 
-float getDensityBasedOnResolution(uint32_t width, uint32_t height){
-    #if defined(__i386__) || defined(__x86_64__)
-    ALOGD("Native-Android-x86: auto set density");
-                   uint32_t area = width*height;
-                    if (area <= 800 * 480) {
-                       return 120.0f;
-                   } else if (area <= 1024 * 600) {
-                       return 130.0f;
-                   } else if (area < 1024 * 768) {
-                       return 140.0f;
-                   } else if (area < 1920 * 1080) {
-                        return 160.0f;
-                   } else if (area < 2560 * 1600) {
-                       return 240.0f;
-                   } else {
-                       return 320.0f;
-                   }
-    #endif
-/* no-op for targets different from x86 */
-    return FALLBACK_DENSITY;
-}
-
 float getDensityFromProperty(const char* property, bool required) {
     char value[PROPERTY_VALUE_MAX];
     const float density = property_get(property, value, nullptr) > 0 ? std::atof(value) : 0.f;
@@ -1038,9 +1016,8 @@ status_t SurfaceFlinger::getStaticDisplayInfo(const sp<IBinder>& displayToken,
     if (mEmulatedDisplayDensity) {
         info->density = mEmulatedDisplayDensity;
     } else {
-		ALOGD("Native-Android-x86: display %d %d density %f", display->getBounds().getWidth(), display->getBounds().getHeight(), mInternalDisplayDensity);
         info->density = info->connectionType == ui::DisplayConnectionType::Internal
-                ? ((mInternalDisplayDensity < 0.5f || mInternalDisplayDensity == FALLBACK_DENSITY) ? getDensityBasedOnResolution(display->getBounds().getWidth(), display->getBounds().getHeight()) : mInternalDisplayDensity)
+                ? mInternalDisplayDensity
                 : FALLBACK_DENSITY;
     }
     info->density /= ACONFIGURATION_DENSITY_MEDIUM;
