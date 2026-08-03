@@ -44,6 +44,7 @@ class LayerRef {
 };
 
 void DiscoverLayers();
+void DiscoverBlissOverlayLayers(const char* lib_name);
 
 uint32_t GetLayerCount();
 const Layer& GetLayer(uint32_t index);

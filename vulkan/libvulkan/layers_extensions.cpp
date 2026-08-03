@@ -132,8 +132,23 @@ bool LayerLibrary::Open() {
         // can't safely use libc++_shared, for example. Which is one reason
         // (among several) we only allow them in non-user builds.
         auto app_namespace = android::GraphicsEnv::getInstance().getAppNamespace();
+        
+        char overlay_lib[PROPERTY_VALUE_MAX];
+        property_get("debug.bliss.vulkan.layer.lib", overlay_lib, "");
+        bool is_overlay = false;
+        if (overlay_lib[0] != '\0') {
+            if ((android::base::StartsWith(path_, "/system/lib") ||
+                 android::base::StartsWith(path_, "/system_ext/lib") ||
+                 android::base::StartsWith(path_, "/vendor/lib") ||
+                 android::base::StartsWith(path_, "/product/lib")) &&
+                path_.find(overlay_lib) != std::string::npos) {
+                is_overlay = true;
+            }
+        }
+
         if (app_namespace &&
-            !android::base::StartsWith(path_, kSystemLayerLibraryDir)) {
+            !android::base::StartsWith(path_, kSystemLayerLibraryDir) &&
+            !is_overlay) {
             char* error_msg = nullptr;
             dlhandle_ = OpenNativeLibraryInNamespace(
                 app_namespace, path_.c_str(), &native_bridge_, &error_msg);
@@ -466,6 +481,32 @@ void DiscoverLayers() {
     }
     if (!android::GraphicsEnv::getInstance().getLayerPaths().empty())
         DiscoverLayersInPathList(android::GraphicsEnv::getInstance().getLayerPaths());
+}
+
+void DiscoverBlissOverlayLayers(const char* lib_name) {
+ #if defined(__LP64__)
+     const char* lib_dir = "lib64";
+ #else
+     const char* lib_dir = "lib";
+ #endif
+
+    std::string system_ext_path = std::string("/system_ext/") + lib_dir + "/" + lib_name;
+    if (access(system_ext_path.c_str(), R_OK) == 0) {
+        AddLayerLibrary(std::string("/system_ext/") + lib_dir, lib_name);
+        return;
+    }
+
+    std::string vendor_path = std::string("/vendor/") + lib_dir + "/" + lib_name;
+    if (access(vendor_path.c_str(), R_OK) == 0) {
+        AddLayerLibrary(std::string("/vendor/") + lib_dir, lib_name);
+        return;
+    }
+
+    std::string system_path = std::string("/system/") + lib_dir + "/" + lib_name;
+    if (access(system_path.c_str(), R_OK) == 0) {
+        AddLayerLibrary(std::string("/system/") + lib_dir, lib_name);
+        return;
+    }
 }
 
 uint32_t GetLayerCount() {

@@ -44,6 +44,8 @@
 #include "api.h"
 #include "driver.h"
 #include "layers_extensions.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 
 namespace vulkan {
@@ -1183,6 +1185,23 @@ const LayerChain::ActiveLayer* LayerChain::GetActiveLayers(
 
 // ----------------------------------------------------------------------------
 
+static bool g_overlay_enabled = false;
+static std::string g_overlay_layer_name;
+
+static std::string get_process_name() {
+    char cmdline[256];
+    int fd = open("/proc/self/cmdline", O_RDONLY);
+    if (fd >= 0) {
+        int n = read(fd, cmdline, sizeof(cmdline) - 1);
+        close(fd);
+        if (n > 0) {
+            cmdline[n] = '\0';
+            return std::string(cmdline);
+        }
+    }
+    return "";
+}
+
 bool EnsureInitialized() {
     static bool initialized = false;
     static pid_t init_attempted_for_pid = 0;
@@ -1195,6 +1214,26 @@ bool EnsureInitialized() {
     init_attempted_for_pid = getpid();
     if (driver::OpenHAL()) {
         DiscoverLayers();
+        
+        char target_app[PROPERTY_VALUE_MAX];
+        property_get("debug.bliss.vulkan.layer.app", target_app, "");
+        if (target_app[0] != '\0') {
+            std::string proc_name = get_process_name();
+            if (proc_name == target_app) {
+                char layer_name[PROPERTY_VALUE_MAX];
+                property_get("debug.bliss.vulkan.layer.name", layer_name, "");
+                
+                char layer_lib[PROPERTY_VALUE_MAX];
+                property_get("debug.bliss.vulkan.layer.lib", layer_lib, "");
+                
+                if (layer_name[0] != '\0' && layer_lib[0] != '\0') {
+                    g_overlay_enabled = true;
+                    g_overlay_layer_name = layer_name;
+                    DiscoverBlissOverlayLayers(layer_lib);
+                }
+            }
+        }
+        
         initialized = true;
     }
 
@@ -1227,6 +1266,20 @@ VkResult CreateInstance(const VkInstanceCreateInfo* pCreateInfo,
 
     if (!EnsureInitialized())
         return VK_ERROR_INITIALIZATION_FAILED;
+
+    if (g_overlay_enabled && !g_overlay_layer_name.empty()) {
+        VkInstanceCreateInfo modifiedInfo = *pCreateInfo;
+        uint32_t newLayerCount = pCreateInfo->enabledLayerCount + 1;
+        std::vector<const char*> layerNames(newLayerCount);
+        layerNames[0] = g_overlay_layer_name.c_str();
+        for (uint32_t i = 0; i < pCreateInfo->enabledLayerCount; i++) {
+            layerNames[i + 1] = pCreateInfo->ppEnabledLayerNames[i];
+        }
+        modifiedInfo.ppEnabledLayerNames = layerNames.data();
+        modifiedInfo.enabledLayerCount = newLayerCount;
+
+        return LayerChain::CreateInstance(&modifiedInfo, pAllocator, pInstance);
+    }
 
     return LayerChain::CreateInstance(pCreateInfo, pAllocator, pInstance);
 }
