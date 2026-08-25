@@ -290,7 +290,7 @@ void VelocityTracker::addMovement(const MotionEvent* event) {
     }
 
     std::vector<Position> positions;
-    positions.resize(pointerCount);
+    positions.resize(idBits.count());
 
     size_t historySize = event->getHistorySize();
     for (size_t h = 0; h <= historySize; h++) {
