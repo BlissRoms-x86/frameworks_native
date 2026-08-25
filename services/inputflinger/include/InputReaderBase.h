@@ -394,6 +394,7 @@ public:
     /* Gets the affine calibration associated with the specified device. */
     virtual TouchAffineTransformation getTouchAffineTransformation(
             const std::string& inputDeviceDescriptor, int32_t surfaceRotation) = 0;
+    virtual int32_t notifyDisplayIdChanged() = 0;
 };
 
 } // namespace android

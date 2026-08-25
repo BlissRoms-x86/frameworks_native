@@ -62,6 +62,7 @@ static constexpr bool DEBUG_TOUCH_OCCLUSION = true;
 #include <powermanager/PowerManager.h>
 #include <unistd.h>
 #include <utils/Trace.h>
+#include <cutils/properties.h>
 
 #include <cerrno>
 #include <cinttypes>
@@ -3760,11 +3761,16 @@ void InputDispatcher::notifyConfigurationChanged(const NotifyConfigurationChange
  */
 void InputDispatcher::accelerateMetaShortcuts(const int32_t deviceId, const int32_t action,
                                               int32_t& keyCode, int32_t& metaState) {
+    // Allow overriding win key with home key
+    char mWinAsHome[PROPERTY_VALUE_MAX] = {0};
+    property_get("ro.boot.force.win_as_home", mWinAsHome, "0");
     if (metaState & AMETA_META_ON && action == AKEY_EVENT_ACTION_DOWN) {
         int32_t newKeyCode = AKEYCODE_UNKNOWN;
         if (keyCode == AKEYCODE_DEL) {
             newKeyCode = AKEYCODE_BACK;
         } else if (keyCode == AKEYCODE_ENTER) {
+            newKeyCode = AKEYCODE_HOME;
+        } else if (strcmp(mWinAsHome, "1") == 0) {
             newKeyCode = AKEYCODE_HOME;
         }
         if (newKeyCode != AKEYCODE_UNKNOWN) {

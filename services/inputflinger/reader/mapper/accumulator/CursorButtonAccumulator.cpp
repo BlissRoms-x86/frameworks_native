@@ -18,6 +18,7 @@
 
 #include "EventHub.h"
 #include "InputDevice.h"
+#include <cutils/properties.h>
 
 namespace android {
 
@@ -84,7 +85,13 @@ uint32_t CursorButtonAccumulator::getButtonState() const {
         result |= AMOTION_EVENT_BUTTON_PRIMARY;
     }
     if (mBtnRight) {
-        result |= AMOTION_EVENT_BUTTON_SECONDARY;
+        char mBtnRightState[PROPERTY_VALUE_MAX] = {0};  
+        property_get("ro.boot.force.right_mouse_as_back", mBtnRightState, "false");
+        if (strcmp(mBtnRightState, "true") == 0) {
+         result |= AMOTION_EVENT_BUTTON_BACK;
+        } else {
+         result |= AMOTION_EVENT_BUTTON_SECONDARY;
+        }        
     }
     if (mBtnMiddle) {
         result |= AMOTION_EVENT_BUTTON_TERTIARY;

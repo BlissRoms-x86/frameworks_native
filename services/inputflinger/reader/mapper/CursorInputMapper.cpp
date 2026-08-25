@@ -24,6 +24,7 @@
 #include "CursorScrollAccumulator.h"
 #include "PointerControllerInterface.h"
 #include "TouchCursorInputMapperCommon.h"
+#include <cutils/properties.h>
 
 namespace android {
 
@@ -362,6 +363,7 @@ void CursorInputMapper::dumpParameters(std::string& dump) {
 void CursorInputMapper::reset(nsecs_t when) {
     mButtonState = 0;
     mDownTime = 0;
+    mDisplayId=0;
 
     mPointerVelocityControl.reset();
     mWheelXVelocityControl.reset();
@@ -400,7 +402,11 @@ void CursorInputMapper::process(const RawEvent* rawEvent) {
     mCursorMotionAccumulator.process(rawEvent);
     mCursorPositionAccumulator.process(rawEvent);
     mCursorScrollAccumulator.process(rawEvent);
-
+    if (auto viewport = mDeviceContext.getAssociatedViewport(); viewport) {
+        if (viewport->displayId != mPointerController->getDisplayId()) {
+            mPointerController->setDisplayViewport(*viewport);
+        }
+    }
     if (rawEvent->type == EV_SYN && rawEvent->code == SYN_REPORT) {
         sync(rawEvent->when, rawEvent->readTime);
     }
@@ -519,7 +525,27 @@ void CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_Y, yCursorPosition);
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_RELATIVE_X, deltaX);
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_RELATIVE_Y, deltaY);
-        displayId = mPointerController->getDisplayId();
+
+	    char mMousePresentation[PROPERTY_VALUE_MAX] = {0};
+        property_get("persist.mouse.presentation", mMousePresentation, "0");
+        if (strcmp(mMousePresentation, "1") == 0) {
+            displayId = mDisplayId;
+            float minX, minY, maxX, maxY;
+            if (mPointerController->getBounds(&minX, &minY, &maxX, &maxY)) {
+                float originalY = yCursorPosition; // remember the original y position
+                if(xCursorPosition==minX){
+                    displayId=getPolicy()->notifyDisplayIdChanged();
+                    mDisplayId=displayId;
+                    mPointerController->setPosition(maxX, originalY);
+                } else if(xCursorPosition==maxX){
+                    displayId=getPolicy()->notifyDisplayIdChanged();
+                    mDisplayId=displayId;
+                    mPointerController->setPosition(minX, originalY);
+                }
+            }
+        }else{
+            displayId = mPointerController->getDisplayId();
+        }
     } else {
         // Pointer capture and navigation modes
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_X, deltaX);
